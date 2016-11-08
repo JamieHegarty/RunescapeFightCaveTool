@@ -19,8 +19,10 @@
 using namespace std;
 
 //Should probably go in header
+//Maybe move all these variables to a header also
 void redrawMap(int start, int wave);
 
+//Make these width and height into variables to elimintate magic numbers
 const sf::Vector2f WINDOW_SIZE(500.0f, 500.0f); //Predetermined window size
 
 sf::Texture backgroundTexture; //Variable to hold background texture
@@ -38,10 +40,9 @@ sf::Texture YtMejKotTexture;
 sf::Texture ketZekTexture;
 sf::Texture tzTokJadTexture;
 
+int wave = 1, start = 0; //Can this be moved or tidied up?
 
-static bool sfmlSetup(int start, int wave) {
-  
-    //Load in required resources
+static bool loadTextures() {    
     if (!backgroundTexture.loadFromFile("../../images/Fight_Caves_Map.png")) {
             std::cerr << "Could not load background texture" << std::endl;
             return false;
@@ -67,23 +68,33 @@ static bool sfmlSetup(int start, int wave) {
 		std::cerr << "Could not load main font" << std::endl;
 		return false;
 	}
-    
-    backgroundSprite.setTexture(backgroundTexture);
-	waveText.setFont(mainFont);
-	waveText.setCharacterSize(24);
-	waveText.setColor(sf::Color::Cyan);
-	waveText.setPosition(225, 465);
-   
-	backgroundSprite.setScale( //Scale the background sprite to fit the current window size
-            WINDOW_SIZE.x / backgroundSprite.getLocalBounds().width,
-            WINDOW_SIZE.y / backgroundSprite.getLocalBounds().height);
 
+    return true;
+}
+
+static bool sfmlSetup() {
+ 
+    loadTextures();
+
+    backgroundSprite.setTexture(backgroundTexture);
+
+    waveText.setFont(mainFont);
+    waveText.setCharacterSize(24); //Magic number? Move to header?
+    waveText.setColor(sf::Color::Cyan);
+    waveText.setPosition(225, 465); //Same as above, magic number?
+    
+    backgroundSprite.setScale( //Scale the background sprite to fit the current window size
+              WINDOW_SIZE.x / backgroundSprite.getLocalBounds().width,
+              WINDOW_SIZE.y / backgroundSprite.getLocalBounds().height);
+
+    //Change this raw string to a variable in header maybe?
     gameWindow.create(sf::VideoMode(WINDOW_SIZE.x, WINDOW_SIZE.y), "Fight Caves Spawn Map", sf::Style::Titlebar | sf::Style::Close); //Create SFML Window
     
-    redrawMap(start, wave);
+    redrawMap(start, wave); //Does redraw map need to be in here?
     return gameWindow.isOpen(); //Only returns true if the game window was successfully created
 }
 
+//There might be a better way to do this, worth brain storming
 int printspawn (int wave) {
   if (wave == 63) { 
 	  printf("JAD ");
@@ -128,7 +139,14 @@ int printspawn (int wave) {
   return wave-1;
 }
  
-void getspawn (int loc) {
+/* 
+   Maybe make a struct or similar for each position? Could prob combine it 
+   with the other postional enum, this one basically translate an int value
+   to an object that has the text e.g. "NW" and the co-ordinates to draw the 
+   monster 
+*/
+
+void getSpawn (int loc) {
   int spawnarr[15] = {3, 5, 2, 1, 5, 3, 4, 1, 2, 3, 5, 4, 1, 2, 4};
   int sval = spawnarr[loc];
 
@@ -157,17 +175,18 @@ void getspawn (int loc) {
  
 void printwave (int start, int wave) {
   int i = 0;
-  int curwave = wave;
+  int currentWave = wave;
   printf("Wave %d: ", wave);
-  while (curwave > 0) {
-    curwave = printspawn(curwave);
-    getspawn((start+i)%15);
+  while (currentWave > 0) {
+    currentWave = printspawn(currentWave);
+    getSpawn((start+i)%15);
     i++;
   }
   printf("\n");
   return;
 }
- 
+
+//Can prob make these enums and rid this function completely
 int spawn2int(char spn[3]) {
   if (strcmp(spn,"NW")==0) return 1;
   if (strcmp(spn,"C")==0) return 2;
@@ -213,21 +232,21 @@ void redrawMap(int start, int wave) {
 	gameWindow.display();
 }
 
-int main() {
-    int wave = 1, start = 0;
+/* Function Work in Progress */
+void getUserInput() {
     int startspawns[4];
-    char s1[3], s2[3];
+    char spawnInput_1[3], spawnInput_2[3]; //Give these meaningful names
 
     printf("Enter spawns as NW, C, SE, S, or SW. \nFirst 22 spawn: ");
-    scanf("%s", s1);
-    startspawns[0] = spawn2int(s1);
+    scanf("%s", spawnInput_1); //Change this from scanf to something more C++ / Robust
+    startspawns[0] = spawn2int(spawnInput_1);
     printf("Second two 22 spawns, separated by a space: ");
-    scanf("%s %s", s1, s2);
-    startspawns[1] = spawn2int(s1);
-    startspawns[2] = spawn2int(s2);
+    scanf("%s %s", spawnInput_1, spawnInput_2);
+    startspawns[1] = spawn2int(spawnInput_1);
+    startspawns[2] = spawn2int(spawnInput_2);
     printf("First 45 spawn: ");
-    scanf("%s", s1);
-    start = spawn2int(s1);
+    scanf("%s", spawnInput_1);
+    start = spawn2int(spawnInput_1);
     
     if (start != startspawns[2]) {
       startspawns[1] = startspawns[2];
@@ -239,37 +258,41 @@ int main() {
     startspawns[3] = spawn2int(s1);
     start = spawnarr2start(startspawns);
     printf("\n");
+}
 
-    if (sfmlSetup(start, wave)) {
-		while (gameWindow.isOpen()) {
-			sf::Event event;
-            
-            
-			while (gameWindow.pollEvent(event)) {
-				if (event.type == sf::Event::Closed)
-					gameWindow.close();
-                    
-				if (event.type == sf::Event::KeyReleased)
-				{
-					if (event.key.code == sf::Keyboard::Right)
-					{
-						if(wave<63){
-						wave++;
-						start++;
-						redrawMap(start, wave);
-						}
-					}
-					if (event.key.code == sf::Keyboard::Left)
-					{
-						if(wave>1){
-						wave--;
-						start--;
-						redrawMap(start, wave);
-						}
-					}
-				}
-			}
-		}
+int main() {
+
+    getUserInput();
+    
+    if (sfmlSetup()) {
+      while (gameWindow.isOpen()) {
+        sf::Event event;
+              
+        while (gameWindow.pollEvent(event)) {
+          if (event.type == sf::Event::Closed)
+            gameWindow.close();
+                      
+          if (event.type == sf::Event::KeyReleased)
+          {
+            if (event.key.code == sf::Keyboard::Right)
+            {
+              if(wave<63){
+              wave++;
+              start++;
+              redrawMap(start, wave);
+              }
+            }
+            if (event.key.code == sf::Keyboard::Left)
+            {
+              if(wave>1){
+              wave--;
+              start--;
+              redrawMap(start, wave);
+              }
+            }
+          }
+        }
+      }
     }
     
     return 0;
